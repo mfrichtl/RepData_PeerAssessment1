@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+<meta name="author" content="Matt Frichtl" />
+
+<meta name="date" content="2015-04-14" />
+
+<title>Data Science, Reproducible Research, Peer Assessment 1</title>
+
+<script src="PA1_template_files/jquery-1.11.0/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="PA1_template_files/bootstrap-3.3.1/css/bootstrap.min.css" rel="stylesheet" />
+<script src="PA1_template_files/bootstrap-3.3.1/js/bootstrap.min.js"></script>
+<script src="PA1_template_files/bootstrap-3.3.1/shim/html5shiv.min.js"></script>
+<script src="PA1_template_files/bootstrap-3.3.1/shim/respond.min.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<link rel="stylesheet"
+      href="PA1_template_files/highlight/default.css"
+      type="text/css" />
+<script src="PA1_template_files/highlight/highlight.js"></script>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img { 
+  max-width:100%; 
+  height: auto; 
+}
+</style>
+<div class="container-fluid main-container">
+
+
+<div id="header">
+<h1 class="title">Data Science, Reproducible Research, Peer Assessment 1</h1>
+<h4 class="author"><em>Matt Frichtl</em></h4>
+<h4 class="date"><em>04/14/2015</em></h4>
+</div>
+
+
+<pre class="r"><code>library(ggplot2)
+library(dplyr)</code></pre>
+<pre><code>## 
+## Attaching package: &#39;dplyr&#39;
+## 
+## The following object is masked from &#39;package:stats&#39;:
+## 
+##     filter
+## 
+## The following objects are masked from &#39;package:base&#39;:
+## 
+##     intersect, setdiff, setequal, union</code></pre>
+<pre class="r"><code>data &lt;- data.frame(read.csv(&quot;activity.csv&quot;, header = TRUE))</code></pre>
+<div id="steps-per-day" class="section level1">
+<h1>1. Steps per Day</h1>
+<p>Calculate the total number of steps each day:</p>
+<pre class="r"><code>daily_steps &lt;- data %&gt;%
+    group_by(date) %&gt;%
+    summarise(steps = sum(steps))</code></pre>
+<pre class="r"><code>ggplot(data = daily_steps, aes(x = date, y = steps)) +
+    geom_bar(stat = &quot;identity&quot;) +
+    labs(x = &quot;Date&quot;, y = &quot;Number of Steps&quot;, title = &quot;Total Steps by Date&quot;) +
+    theme(axis.text.x = element_text(angle = 90))</code></pre>
+<p><img src="PA1_template_files/figure-html/daily_steps_plot-1.png" title="" alt="" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>mean_steps &lt;- mean(daily_steps$steps, na.rm = TRUE)
+sd_steps &lt;- sd(daily_steps$steps, na.rm = TRUE)
+summary(daily_steps)</code></pre>
+<pre><code>##          date        steps      
+##  2012-10-01: 1   Min.   :   41  
+##  2012-10-02: 1   1st Qu.: 8841  
+##  2012-10-03: 1   Median :10765  
+##  2012-10-04: 1   Mean   :10766  
+##  2012-10-05: 1   3rd Qu.:13294  
+##  2012-10-06: 1   Max.   :21194  
+##  (Other)   :55   NA&#39;s   :8</code></pre>
+<p>The mean number of steps taken daily is: 1.076618910^{4}<br />The standard deviation of the number of steps taken daily is: 4269.1804927</p>
+</div>
+<div id="average-daily-activity-pattern" class="section level1">
+<h1>2. Average Daily Activity Pattern</h1>
+<pre class="r"><code>mean_interval &lt;- data %&gt;%
+    group_by(interval) %&gt;%
+    summarise(steps = mean(steps, na.rm = TRUE))
+
+ggplot(data = mean_interval, aes(x = interval, y = steps)) +
+    geom_line() +
+    labs(x = &quot;Time Interval (min)&quot;, y = &quot;Mean Steps Taken&quot;,
+         title = &quot;Daily Activity Pattern&quot;)</code></pre>
+<p><img src="PA1_template_files/figure-html/time_intervals-1.png" title="" alt="" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>max_steps = max(mean_interval$steps)
+max_interval &lt;- filter(mean_interval, steps == max_steps)</code></pre>
+<p>On average, the time interval in which the most steps are taken occurs at 835 minutes.</p>
+</div>
+<div id="inputing-missing-values" class="section level1">
+<h1>3. Inputing Missing Values</h1>
+<p>The function below replaces any missing values in steps with the mean value for that interval.</p>
+<pre class="r"><code>check_and_replace &lt;- function(entry, means = mean_interval) {
+    if (is.na(entry$steps) == TRUE) {
+        entry$steps = filter(mean_interval, interval == entry$interval)$steps
+    }
+    return(entry)
+}
+data_replaced &lt;- data
+for (row in seq_len(length(data[, 1]))) {
+    data_replaced[row, ] &lt;- check_and_replace(entry = data[row, ])
+}</code></pre>
+<p>Now calculate daily steps with the new data set and plot a histogram with the new daily sums.</p>
+<pre class="r"><code>daily_steps_replaced &lt;- data_replaced %&gt;%
+    group_by(date) %&gt;%
+    summarise(steps = sum(steps))
+
+ggplot(data = daily_steps_replaced, aes(x = date, y = steps)) +
+    geom_bar(stat = &quot;identity&quot;) +
+    labs(x = &quot;Date&quot;, y = &quot;Number of Steps&quot;, 
+         title = &quot;Total Steps by Date with Replacement Data&quot;) +
+    theme(axis.text.x = element_text(angle = 90))</code></pre>
+<p><img src="PA1_template_files/figure-html/new%20daily%20steps-1.png" title="" alt="" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>mean_steps_replaced &lt;- mean(daily_steps_replaced$steps)
+median_steps_replaced &lt;- median(daily_steps_replaced$steps)</code></pre>
+<p>The new data increases the number of steps taken each day because any missing values were effectively 0 for the bar chart generated in part 1. The new mean is 1.076618910^{4} and the new median is 1.076618910^{4}.</p>
+<p>These values remain the same as in part 1. This because the replacement data used was simply the mean value for each interval, one would not expect the mean or median to have shifted from the previous calculation.</p>
+</div>
+<div id="weekday-vs-weekend-activity-patterns" class="section level1">
+<h1>4. Weekday vs Weekend Activity Patterns</h1>
+<pre class="r"><code>data_with_weekend &lt;- data_replaced
+data_with_weekend$weekend &lt;- NA
+for (row in seq_len(length(data_with_weekend[,1]))) {
+    if(weekdays(as.POSIXct(data_with_weekend[row, ]$date)) == &quot;Saturday&quot;) {
+        data_with_weekend[row, ]$weekend &lt;- &quot;weekend&quot;
+    } else if(weekdays(as.POSIXct(data_with_weekend[row, ]$date)) == &quot;Sunday&quot;) {
+        data_with_weekend[row, ]$weekend &lt;- &quot;weekend&quot;
+    } else {
+        data_with_weekend[row, ]$weekend &lt;- &quot;weekday&quot;
+    }
+}</code></pre>
+<pre class="r"><code>ggplot(data = data_with_weekend, aes(x = interval, y = steps)) +
+    geom_line() +
+    facet_grid(weekend ~ .) +
+    labs(y = &quot;Number of Steps&quot;, x = &quot;Interval&quot;,
+         title = &quot;Number of Steps Taken During on Weekdays versus Weekends&quot;)</code></pre>
+<p><img src="PA1_template_files/figure-html/graph%20weekend%20vs%20weekday-1.png" title="" alt="" style="display: block; margin: auto;" /></p>
+</div>
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+$(document).ready(function () {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+});
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
